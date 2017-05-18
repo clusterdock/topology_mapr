@@ -113,5 +113,10 @@ def start(args):
                                'sudo -u mapr hadoop fs -chmod 777 /apps/spark']
     primary_node.ssh('; '.join(spark_directory_command))
 
+    logger.info('Creating MapR sample Stream named /sample-stream on %s...', primary_node.hostname)
+    stream_command = ['sudo -u mapr maprcli stream create -path /sample-stream',
+                      'sudo -u maprcli stream edit -path /sample-stream -produceperm p -consumeperm p -topicperm p']
+    primary_node.ssh('; '.join(stream_command))
+
     logger.info("MapR Control System server is now accessible at http://%s:%s",
                 getfqdn(), mcs_server_host_port)
