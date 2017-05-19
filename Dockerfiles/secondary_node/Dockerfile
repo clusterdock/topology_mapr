@@ -1,4 +1,4 @@
-FROM cloudera/clusterdock:centos6.6_nodebase
+FROM clusterdock/topology_nodebase:centos6.6
 
 ADD mapr_core.repo /etc/yum.repos.d/
 ADD mapr_ecosystem.repo /etc/yum.repos.d/
@@ -11,4 +11,5 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-hbase-regionserver \
     mapr-nodemanager
 
-# RUN chkconfig mapr-warden off
+RUN groupadd -r -g 20159 sdc \
+    && useradd -r -g sdc sdc
