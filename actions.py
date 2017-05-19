@@ -41,7 +41,7 @@ def start(args):
 
     for image in [primary_node_image, secondary_node_image]:
         if args.always_pull or args.only_pull or not is_image_available_locally(image):
-            logger.info("Pulling image %s. This might take a little while...", image)
+            logger.info("Pulling image %s. This might take a little while ...", image)
             pull_image(image)
 
     if args.only_pull:
@@ -81,7 +81,7 @@ def start(args):
                              'chown -R mapr:mapr ~mapr/.ssh']
     cluster.ssh('; '.join(add_mapr_user_command))
 
-    logger.info('Stopping Warden and ZooKeeper on nodes...')
+    logger.info('Stopping Warden and ZooKeeper on nodes ...')
     primary_node.ssh('; '.join(['service mapr-warden stop',
                                 'service mapr-zookeeper stop']))
     secondary_node_group.ssh('service mapr-warden stop')
@@ -89,33 +89,37 @@ def start(args):
 #                                 'chkconfig mapr-zookeeper on']))
 #     secondary_node_group.ssh('chkconfig mapr-warden on')
 
-    logger.info('Generating new UUIDs...')
+    logger.info('Generating new UUIDs ...')
     cluster.ssh('/opt/mapr/server/mruuidgen > /opt/mapr/hostid')
 
     for node in cluster:
         configure_command = ('/opt/mapr/server/configure.sh -C {0} -Z {0} -RM {0} -HS {0} '
-                             '-u mapr -g mapr -D {1}'.format(
-                                 primary_node.fqdn, 
-                                 ','.join(node_disks.get(node.hostname))
-                             ))
-        logger.info('Running %s on %s...', configure_command, node.hostname)
+                             '-u mapr -g mapr -D {1}'.format(primary_node.fqdn,
+                                                             ','.join(node_disks.get(node.hostname))))
+        logger.info('Running %s on %s ...', configure_command, node.hostname)
         node.ssh(configure_command)
 
-    logger.info('Waiting for MapR Control System server to come online...')
+    logger.info('Waiting for MapR Control System server to come online ...')
     mcs_server_startup_time = wait_for_port_open(primary_node.ip_address,
                                                 MCS_SERVER_PORT, timeout_sec=180)
     logger.info("Detected MapR Control System server after %.2f seconds.", mcs_server_startup_time)
     mcs_server_host_port = get_host_port_binding(primary_node.container_id,
                                                  MCS_SERVER_PORT)
 
-    logger.info('Creating /apps/spark directory on %s...', primary_node.hostname)
+
+    logger.info('Creating /apps/spark directory on %s ...', primary_node.hostname)
     spark_directory_command = ['sudo -u mapr hadoop fs -mkdir -p /apps/spark',
                                'sudo -u mapr hadoop fs -chmod 777 /apps/spark']
     primary_node.ssh('; '.join(spark_directory_command))
 
-    logger.info('Creating MapR sample Stream named /sample-stream on %s...', primary_node.hostname)
+    logger.info('Creating MapR sample Stream named /sample-stream on %s ...', primary_node.hostname)
     primary_node.ssh('sudo -u mapr maprcli stream create -path /sample-stream '
                      '-produceperm p -consumeperm p -topicperm p')
+
+    logger.info('Creating sdc user directory in MapR-FS ...')
+    create_sdc_user_directory_command = ['sudo -u mapr hadoop fs -mkdir -p /user/sdc',
+                                         'sudo -u mapr hadoop fs -chown sdc:sdc /user/sdc']
+    primary_node.ssh('; '.join(create_sdc_user_directory_command))
 
     logger.info("MapR Control System server is now accessible at https://%s:%s",
                 getfqdn(), mcs_server_host_port)
