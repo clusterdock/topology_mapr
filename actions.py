@@ -85,17 +85,15 @@ def start(args):
     primary_node.ssh('; '.join(['service mapr-warden stop',
                                 'service mapr-zookeeper stop']))
     secondary_node_group.ssh('service mapr-warden stop')
-#     primary_node.ssh('; '.join(['chkconfig mapr-warden on',
-#                                 'chkconfig mapr-zookeeper on']))
-#     secondary_node_group.ssh('chkconfig mapr-warden on')
 
     logger.info('Generating new UUIDs ...')
     cluster.ssh('/opt/mapr/server/mruuidgen > /opt/mapr/hostid')
 
     for node in cluster:
         configure_command = ('/opt/mapr/server/configure.sh -C {0} -Z {0} -RM {0} -HS {0} '
-                             '-u mapr -g mapr -D {1}'.format(primary_node.fqdn,
-                                                             ','.join(node_disks.get(node.hostname))))
+                             '-u mapr -g mapr -D {1} '
+                             '-defaultdb maprdb'.format(primary_node.fqdn,
+                                                        ','.join(node_disks.get(node.hostname))))
         logger.info('Running %s on %s ...', configure_command, node.hostname)
         node.ssh(configure_command)
 
