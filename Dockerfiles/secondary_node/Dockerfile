@@ -12,4 +12,4 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-nodemanager
 
 RUN groupadd -r -g 20159 sdc \
-    && useradd -r -g sdc sdc
+    && useradd -r -g sdc -u 20159 sdc
