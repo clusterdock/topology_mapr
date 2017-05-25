@@ -8,6 +8,7 @@ RUN rpm --import http://package.mapr.com/releases/pub/maprgpg.key
 RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-cldb \
     mapr-core \
+    mapr-drill \
     mapr-fileserver \
     mapr-gateway \
     mapr-hbase \

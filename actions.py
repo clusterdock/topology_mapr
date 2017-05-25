@@ -82,7 +82,8 @@ def start(args):
     cluster.ssh('; '.join(add_mapr_user_command))
 
     logger.info('Stopping Warden and ZooKeeper on nodes ...')
-    primary_node.ssh('; '.join(['service mapr-warden stop',
+    primary_node.ssh('; '.join(['service mapr-drill stop',
+                                'service mapr-warden stop',
                                 'service mapr-zookeeper stop']))
     secondary_node_group.ssh('service mapr-warden stop')
 
