@@ -75,18 +75,6 @@ def start(args):
     cluster = Cluster(topology='mapr', node_groups=node_groups, network_name=args.network)
     cluster.start()
 
-    add_mapr_user_command = ['useradd mapr',
-                             'echo mapr | passwd mapr --stdin',
-                             'cp -R /root/.ssh ~mapr',
-                             'chown -R mapr:mapr ~mapr/.ssh']
-    cluster.ssh('; '.join(add_mapr_user_command))
-
-    logger.info('Stopping Warden and ZooKeeper on nodes ...')
-    primary_node.ssh('; '.join(['service mapr-drill stop',
-                                'service mapr-warden stop',
-                                'service mapr-zookeeper stop']))
-    secondary_node_group.ssh('service mapr-warden stop')
-
     logger.info('Generating new UUIDs ...')
     cluster.ssh('/opt/mapr/server/mruuidgen > /opt/mapr/hostid')
 

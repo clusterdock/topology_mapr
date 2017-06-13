@@ -28,5 +28,18 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-zookeeper \
     mysql-server
 
+# Even with owner mapr, Docker has issues writing files into zkdata as the mapr user.
+# https://forums.docker.com/t/permission-erros-to-create-subdirectories/17771 suggested
+# this workaround, which seems to work for us.
+VOLUME /opt/mapr/zkdata
+
+RUN useradd mapr \
+    && echo mapr | passwd mapr --stdin \
+    && cp -R /root/.ssh ~mapr \
+    && chown -R mapr:mapr ~mapr/.ssh \
+    && chown -R mapr:mapr /opt/mapr/httpfs \
+    && chkconfig mapr-warden off \
+    && chkconfig mapr-zookeeper off
+
 RUN groupadd -r -g 20159 sdc \
     && useradd -r -g sdc -u 20159 sdc

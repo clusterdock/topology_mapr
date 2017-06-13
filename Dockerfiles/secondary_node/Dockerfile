@@ -11,5 +11,11 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-hbase-regionserver \
     mapr-nodemanager
 
+RUN useradd mapr \
+    && echo mapr | passwd mapr --stdin \
+    && cp -R /root/.ssh ~mapr \
+    && chown -R mapr:mapr ~mapr/.ssh \
+    && chkconfig mapr-warden off
+
 RUN groupadd -r -g 20159 sdc \
     && useradd -r -g sdc -u 20159 sdc
