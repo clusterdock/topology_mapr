@@ -1,4 +1,4 @@
-FROM cloudera/clusterdock:centos6.6_nodebase
+FROM clusterdock/topology_nodebase:centos6.6
 
 ADD mapr_core.repo /etc/yum.repos.d/
 ADD mapr_ecosystem.repo /etc/yum.repos.d/
@@ -26,6 +26,3 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-webserver \
     mapr-zookeeper \
     mysql-server
-
-# RUN chkconfig mapr-warden off \
-#     && chkconfig mapr-zookeeper off
