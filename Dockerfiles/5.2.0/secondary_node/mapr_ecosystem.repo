@@ -1,6 +1,0 @@
-[MapR_Ecosystem]
-name = MapR Ecosystem Components
-baseurl = http://package.mapr.com/releases/ecosystem-5.x/redhat
-enabled = 1
-gpgcheck = 0
-protected = 1
