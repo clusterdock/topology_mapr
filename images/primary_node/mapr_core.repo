@@ -1,0 +1,5 @@
+[MapR_Core]
+name = MapR Core Components
+enabled = 1
+gpgcheck = 0
+protected = 1

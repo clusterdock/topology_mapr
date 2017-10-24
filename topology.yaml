@@ -31,6 +31,9 @@ start args:
         default: 5.2.0
         help: MapR version to use
         metavar: ver
+    --mep-version:
+        help: MEP version to use
+        metavar: ver
     --node-disks:
         help: Map of node names to block devices
         metavar: map

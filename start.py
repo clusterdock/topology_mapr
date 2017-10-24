@@ -28,6 +28,8 @@ def main(args):
     image_prefix = '{}/{}/clusterdock:mapr{}'.format(args.registry,
                                                      args.namespace or DEFAULT_NAMESPACE,
                                                      args.mapr_version)
+    if args.mep_version:
+        image_prefix = '{}_mep{}'.format(image_prefix, args.mep_version)
     primary_node_image = '{}_{}'.format(image_prefix, 'primary-node')
     secondary_node_image = '{}_{}'.format(image_prefix, 'secondary-node')
 

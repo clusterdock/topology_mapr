@@ -1,0 +1,5 @@
+[MapR_MEP]
+name = MapR MEP Components
+enabled = 1
+gpgcheck = 0
+protected = 1
