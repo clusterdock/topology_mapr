@@ -10,8 +10,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-FROM clusterdock/topology_nodebase:centos6.6
+ARG CENTOS_VERSION=6.6
+FROM clusterdock/topology_nodebase:centos${CENTOS_VERSION}
 
 # Build arguments.
 ARG MAPR_VERSION
@@ -47,3 +47,25 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-webserver \
     mapr-zookeeper \
     mysql-server
+
+# MapR script /opt/mapr/initscripts/mapr-warden sends core dump to a directory created by output of
+# $(cat /proc/sys/kernel/core_pattern). On a host with Ubuntu, the command produces output like
+# 'No such file or directory'. The script still proceeds without checking the correctness of previous
+# command output and subsequently fails.
+# To avoid this failure, the script is modified to send core dump to '/tmp' directory.
+RUN if [ "${MAPR_VERSION}" = "6.0.0-RC1" ]; then \
+    sed -i 's|coresDir=$(dirname $(cat /proc/sys/kernel/core_pattern))|coresDir=/tmp|' \
+    /opt/mapr/initscripts/mapr-warden; fi
+
+# Even with owner mapr, Docker has issues writing files into zkdata as the mapr user.
+# https://forums.docker.com/t/permission-erros-to-create-subdirectories/17771 suggested
+# this workaround, which seems to work for us.
+VOLUME /opt/mapr/zkdata
+
+RUN useradd mapr \
+    && echo mapr | passwd mapr --stdin \
+    && cp -R /root/.ssh ~mapr \
+    && chown -R mapr:mapr ~mapr/.ssh \
+    && chown -R mapr:mapr /opt/mapr/httpfs \
+    && chkconfig mapr-warden off \
+    && chkconfig mapr-zookeeper off

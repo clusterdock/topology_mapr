@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import logging
+import tempfile
 import yaml
 from socket import getfqdn, socket
 
@@ -55,33 +56,15 @@ def main(args):
                        for hostname in args.secondary_nodes]
 
     cluster = Cluster(primary_node, *secondary_nodes)
+    # MapR 6.0.0-RC1 uses CentOS 7 which  needs following settings.
+    if args.mapr_version == '6.0.0-RC1':
+        for node in cluster.nodes:
+            node.volumes.append({'/sys/fs/cgroup': '/sys/fs/cgroup'})
+            temp_dir_name = tempfile.mkdtemp()
+            logger.debug('Created temporary directory %s', temp_dir_name)
+            node.volumes.append({temp_dir_name: '/run'})
     cluster.primary_node = primary_node
     cluster.start(args.network, pull_images=args.always_pull)
-
-    # Verify that service MapR warden is running and then only proceed.
-    logger.info('Check if Service MapR warden is running ...')
-
-    def condition(node):
-        return node.execute('service mapr-warden status').exit_code == 0
-
-    def success(time):
-        logger.info('MapR warden is running after %s seconds.', time)
-
-    def failure(timeout):
-        raise TimeoutError('Timed out after {} seconds waiting '
-                           'for MapR warden to start running.'.format(timeout))
-    wait_for_condition(condition=condition, condition_args=[primary_node],
-                       time_between_checks=1, timeout=30, success=success, failure=failure)
-
-    add_mapr_user_command = ['useradd mapr',
-                             'echo mapr | passwd mapr --stdin',
-                             'cp -R /root/.ssh ~mapr',
-                             'chown -R mapr:mapr ~mapr/.ssh']
-    cluster.execute("bash -c '{}'".format('; '.join(add_mapr_user_command)))
-
-    logger.info('Stopping Warden and ZooKeeper on nodes ...')
-    cluster.execute('service mapr-warden stop')
-    primary_node.execute('service mapr-zookeeper stop')
 
     logger.info('Generating new UUIDs ...')
     cluster.execute('/opt/mapr/server/mruuidgen > /opt/mapr/hostid')

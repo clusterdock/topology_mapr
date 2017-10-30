@@ -17,10 +17,26 @@
 MAPR_VERSION="$1"
 MEP_VERSION="$2"
 
-echo "baseurl = http://package.mapr.com/releases/v${MAPR_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_core.repo
-if [ "${MAPR_VERSION}" = "5.2.0" ] && [ -z "${MEP_VERSION}" ]; then
-   echo "baseurl = http://package.mapr.com/releases/ecosystem-5.x/redhat" >> /etc/yum.repos.d/mapr_mep_ecosystem.repo
-else
-   echo "baseurl = http://package.mapr.com/releases/MEP/MEP-${MEP_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_mep_ecosystem.repo
-fi
+set_repos() {
+    echo "baseurl = http://package.mapr.com/releases/v${MAPR_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_core.repo
+    echo "baseurl = http://package.mapr.com/releases/MEP/MEP-${MEP_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_mep_ecosystem.repo
+}
 
+case "${MAPR_VERSION}" in
+    "5.2.0")
+        echo "Inside ${MAPR_VERSION}"
+        if [ -z "${MEP_VERSION}" ]; then
+            echo "baseurl = http://package.mapr.com/releases/v${MAPR_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_core.repo
+            echo "baseurl = http://package.mapr.com/releases/ecosystem-5.x/redhat" >> /etc/yum.repos.d/mapr_mep_ecosystem.repo
+        else
+            set_repos
+        fi
+        ;;
+    "6.0.0-RC1")
+        echo "baseurl = http://package.mapr.com/v6.0.0-rc1/v6.0.0/redhat/" >> /etc/yum.repos.d/mapr_core.repo
+        echo "baseurl = http://package.mapr.com/v6.0.0-rc1/MEP/MEP-${MEP_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_mep_ecosystem.repo
+        ;;
+    *)
+        set_repos
+        ;;
+esac
