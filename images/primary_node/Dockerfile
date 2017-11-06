@@ -69,3 +69,6 @@ RUN useradd mapr \
     && chown -R mapr:mapr /opt/mapr/httpfs \
     && chkconfig mapr-warden off \
     && chkconfig mapr-zookeeper off
+
+RUN groupadd -r -g 20159 sdc \
+    && useradd -r -g sdc -u 20159 sdc

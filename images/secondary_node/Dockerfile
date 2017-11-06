@@ -48,3 +48,6 @@ RUN useradd mapr \
     && cp -R /root/.ssh ~mapr \
     && chown -R mapr:mapr ~mapr/.ssh \
     && chkconfig mapr-warden off
+
+RUN groupadd -r -g 20159 sdc \
+    && useradd -r -g sdc -u 20159 sdc

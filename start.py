@@ -175,5 +175,10 @@ def main(args):
                                      'rm /tmp/cluster-name']
         primary_node.execute(' && '.join(register_gateway_commands))
 
+    logger.info('Creating sdc user directory in MapR-FS ...')
+    create_sdc_user_directory_command = ['sudo -u mapr hadoop fs -mkdir -p /user/sdc',
+                                         'sudo -u mapr hadoop fs -chown sdc:sdc /user/sdc']
+    primary_node.execute('; '.join(create_sdc_user_directory_command))
+
     logger.info('MapR Control System server is now accessible at https://%s:%s',
                 getfqdn(), mcs_server_host_port)
