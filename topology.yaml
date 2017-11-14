@@ -27,6 +27,12 @@ build args:
         metavar: ver
 
 start args:
+    --license-credentials:
+        help: MapR license credentials to use in the format username:password
+        metavar: credentials
+    --license-url:
+        help: URL to MapR license file location
+        metavar: url
     --mapr-version:
         default: 5.2.0
         help: MapR version to use

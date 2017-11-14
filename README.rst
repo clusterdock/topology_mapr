@@ -25,12 +25,15 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
 .. code-block:: console
 
     $ clusterdock start topology_mapr -h
+    clusterdock start topology_mapr -h
     usage: clusterdock start [--always-pull] [--namespace ns] [--network nw]
-                         [-o sys] [-r url] [-h] [--mapr-version ver]
-                         [--node-disks map] [--predictable]
-                         [--secondary-nodes node [node ...]]
-                         [--primary-node node [node ...]]
-                         topology
+                             [-o sys] [-r url] [-h] [--mapr-version ver]
+                             [--license-url url] [--mep-version ver]
+                             [--node-disks map] [--predictable]
+                             [--license-credentials credentials]
+                             [--secondary-nodes node [node ...]]
+                             [--primary-node node [node ...]]
+                             topology
 
     Start a MapR cluster
     
@@ -52,6 +55,10 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
       -h, --help            show this help message and exit
     
     MapR arguments:
+      --license-credentials credentials
+                            MapR license credentials to use in the format
+                            username:password (default: None)
+      --license-url url     URL to MapR license file location (default: None)
       --mapr-version ver    MapR version to use (default: 5.2.0)
       --mep-version ver     MEP version to use (default: None)
       --node-disks map      Map of node names to block devices (default: None)

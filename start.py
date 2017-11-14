@@ -26,6 +26,9 @@ logger = logging.getLogger('clusterdock.{}'.format(__name__))
 
 
 def main(args):
+    if args.license_url and not args.license_credentials:
+        raise Exception('--license-credentials is a required argument if --license-url is provided.')
+
     image_prefix = '{}/{}/clusterdock:mapr{}'.format(args.registry,
                                                      args.namespace or DEFAULT_NAMESPACE,
                                                      args.mapr_version)
@@ -56,8 +59,8 @@ def main(args):
                        for hostname in args.secondary_nodes]
 
     cluster = Cluster(primary_node, *secondary_nodes)
-    # MapR 6.0.0-RC1 uses CentOS 7 which  needs following settings.
-    if args.mapr_version == '6.0.0-RC1':
+    # MapR 6.0.0 uses CentOS 7 which  needs following settings.
+    if args.mapr_version.startswith('6.0.0'):
         for node in cluster.nodes:
             node.volumes.append({'/sys/fs/cgroup': '/sys/fs/cgroup'})
             temp_dir_name = tempfile.mkdtemp()
@@ -88,7 +91,8 @@ def main(args):
     def failure(timeout):
         raise TimeoutError('Timed out after {} seconds waiting '
                            'for MapR Control System server to come online.'.format(timeout))
-    wait_for_condition(condition=condition, condition_args=[primary_node.ip_address, MCS_SERVER_PORT],
+    wait_for_condition(condition=condition,
+                       condition_args=[primary_node.ip_address, MCS_SERVER_PORT],
                        time_between_checks=3, timeout=180, success=success, failure=failure)
 
     mcs_server_host_port = primary_node.host_ports.get(MCS_SERVER_PORT)
@@ -101,6 +105,14 @@ def main(args):
     logger.info('Creating MapR sample Stream named /sample-stream on %s ...', primary_node.hostname)
     primary_node.execute('sudo -u mapr maprcli stream create -path /sample-stream '
                          '-produceperm p -consumeperm p -topicperm p')
+
+    if args.mapr_version.startswith('6.0.0') and args.license_url:
+        license_commands = ['curl --user {} {} > /tmp/lic'.format(args.license_credentials,
+                                                                  args.license_url),
+                            '/opt/mapr/bin/maprcli license add -license /tmp/lic -is_file true',
+                            'rm -rf /tmp/lic']
+        logger.info('Applying license ...')
+        primary_node.execute('; '.join(license_commands))
 
     logger.info('MapR Control System server is now accessible at https://%s:%s',
                 getfqdn(), mcs_server_host_port)
