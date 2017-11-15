@@ -31,6 +31,7 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
                              [--license-url url] [--mep-version ver]
                              [--node-disks map] [--predictable]
                              [--license-credentials credentials]
+                             [--dont-register-gateway]
                              [--secondary-nodes node [node ...]]
                              [--primary-node node [node ...]]
                              topology
@@ -64,6 +65,9 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
       --node-disks map      Map of node names to block devices (default: None)
       --predictable         If specified, attempt to expose container ports to the
                             same port number on the host (default: False)
+      --dont-register-gateway
+                            If specified, do not register gateway with the cluster
+                            (default: False)
     
     Node groups:
       --secondary-nodes node [node ...]

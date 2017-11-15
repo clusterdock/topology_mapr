@@ -114,5 +114,14 @@ def main(args):
         logger.info('Applying license ...')
         primary_node.execute('; '.join(license_commands))
 
+    if not args.dont_register_gateway:
+        logger.info('Registering gateway with the cluster ...')
+        register_gateway_commands = ["cat /opt/mapr/conf/mapr-clusters.conf | egrep -o '^[^ ]* '"
+                                     ' > /tmp/cluster-name',
+                                     'maprcli cluster gateway set -dstcluster $(cat '
+                                     '/tmp/cluster-name) -gateways {}'.format(primary_node.fqdn),
+                                     'rm /tmp/cluster-name']
+        primary_node.execute('; '.join(register_gateway_commands))
+
     logger.info('MapR Control System server is now accessible at https://%s:%s',
                 getfqdn(), mcs_server_host_port)
