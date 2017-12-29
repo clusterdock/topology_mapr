@@ -32,10 +32,6 @@ case "${MAPR_VERSION}" in
             set_repos
         fi
         ;;
-    "6.0.0-RC1")
-        echo "baseurl = http://package.mapr.com/v6.0.0-rc1/v6.0.0/redhat/" >> /etc/yum.repos.d/mapr_core.repo
-        echo "baseurl = http://package.mapr.com/v6.0.0-rc1/MEP/MEP-${MEP_VERSION}/redhat/" >> /etc/yum.repos.d/mapr_mep_ecosystem.repo
-        ;;
     *)
         set_repos
         ;;

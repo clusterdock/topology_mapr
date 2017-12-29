@@ -53,9 +53,8 @@ RUN yum -y install java-1.8.0-openjdk-devel \
 # 'No such file or directory'. The script still proceeds without checking the correctness of previous
 # command output and subsequently fails.
 # To avoid this failure, the script is modified to send core dump to '/tmp' directory.
-RUN if [ "${MAPR_VERSION}" = "6.0.0-RC1" ]; then \
-    sed -i 's|coresDir=$(dirname $(cat /proc/sys/kernel/core_pattern))|coresDir=/tmp|' \
-    /opt/mapr/initscripts/mapr-warden; fi
+RUN sed -i 's|coresDir=$(dirname $(cat /proc/sys/kernel/core_pattern))|coresDir=/tmp|' \
+    /opt/mapr/initscripts/mapr-warden
 
 # Even with owner mapr, Docker has issues writing files into zkdata as the mapr user.
 # https://forums.docker.com/t/permission-erros-to-create-subdirectories/17771 suggested
