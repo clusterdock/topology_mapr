@@ -24,6 +24,7 @@ DEFAULT_NAMESPACE = 'clusterdock'
 EARLIEST_MAPR_VERSION_WITH_LICENSE_AND_CENTOS_7 = (6, 0, 0)
 MAPR_CONFIG_DIR = '/opt/mapr/conf'
 MAPR_SERVERTICKET_FILE = 'maprserverticket'
+DEFAULT_SDC_REPO = 'https://s3-us-west-2.amazonaws.com/archives.streamsets.com/datacollector/'
 MCS_SERVER_PORT = 8443
 SECURE_CONFIG_CONTAINER_DIR = '/etc/clusterdock/secure'
 SSL_KEYSTORE_FILE = 'ssl_keystore'
@@ -180,5 +181,81 @@ def main(args):
                                          'sudo -u mapr hadoop fs -chown sdc:sdc /user/sdc']
     primary_node.execute('; '.join(create_sdc_user_directory_command))
 
+    if args.sdc_version:
+        logger.info('Installing StreamSets DataCollector version %s ...', args.sdc_version)
+        _install_streamsets_datacollector(primary_node, args.sdc_version,
+                                          args.mapr_version, args.mep_version)
+        logger.info('StreamSets DataCollector version %s is installed using rpm. '
+                    'Install additional stage libraries using rpm ...', args.sdc_version)
+
     logger.info('MapR Control System server is now accessible at https://%s:%s',
                 getfqdn(), mcs_server_host_port)
+
+
+# Returns wget commands and rpm package names for all the rpm packages needed.
+# These lists depend on the SDC version, MapR version and MEP version.
+def _gather_wget_commands_and_rpm_names(whole_sdc_version, mapr_version, mep_version):
+    result_rpms = []
+    sdc_version = whole_sdc_version.rsplit('-RC')[0]
+    sdc_rpm = 'streamsets-datacollector-{}-1.noarch.rpm'.format(sdc_version)
+    result_rpms.append(sdc_rpm)
+    name = 'streamsets-datacollector-mapr_{mapr_version}-lib-{sdc_version}-1.noarch.rpm'
+    sdc_mapr_rpm = name.format(sdc_version=sdc_version,
+                               mapr_version='_'.join(mapr_version.split('.')[:2]))
+    result_rpms.append(sdc_mapr_rpm)
+
+    result_wgets = []
+    el_part = ''
+    if sdc_version.startswith('3'):
+        el_part = 'el7/' if mapr_version.startswith('6') else 'el6/'
+    base_url = '{sdc_repo}{sdc_ver}/rpm/{el_part}'.format(sdc_repo=DEFAULT_SDC_REPO,
+                                                          sdc_ver=whole_sdc_version,
+                                                          el_part=el_part)
+
+    # RPM for SDC.
+    result_wgets.append('wget -q {base_url}{sdc_rpm}'.format(base_url=base_url, sdc_rpm=sdc_rpm))
+    # RPM for MapR stage library.
+    result_wgets.append('wget -q {base_url}{sdc_mapr_rpm}'.format(base_url=base_url,
+                                                                  sdc_mapr_rpm=sdc_mapr_rpm))
+    # RPM for MEP stage library for MapR 6.
+    if mapr_version.startswith('6'):
+        mep_rpm_name = 'streamsets-datacollector-mapr_{}-mep{}-lib-{}-1.noarch.rpm'
+        mep_rpm = mep_rpm_name.format('_'.join(mapr_version.split('.')[:2]),
+                                      mep_version[:1],
+                                      sdc_version)
+        result_wgets.append('wget -q {base_url}{mep_rpm}'.format(base_url=base_url,
+                                                                 mep_rpm=mep_rpm))
+        result_rpms.append(mep_rpm)
+    # RPM for Spark 2.1 stage library for MapR 5.2.2.
+    if mapr_version == '5.2.2' and mep_version.startswith('3'):
+        spark_rpm_name = 'streamsets-datacollector-mapr_spark_2_1_mep_{}-lib-{}-1.noarch.rpm'
+        spark_rpm = spark_rpm_name.format('_'.join(mep_version.split('.')[:2]), sdc_version)
+        result_wgets.append('wget -q {base_url}{spark_rpm}'.format(base_url=base_url,
+                                                                   spark_rpm=spark_rpm))
+        result_rpms.append(spark_rpm)
+
+    return result_wgets, result_rpms
+
+
+# Installation of SDC happens in following major steps:
+# Fetch and install all the rpm packages for the SDC core and MapR stage-libs
+# Run the script to setup MapR
+# Start SDC service
+def _install_streamsets_datacollector(primary_node, sdc_version, mapr_version, mep_version):
+    primary_node.execute('JAVA_HOME=/usr/java/jdk1.8.0_131')
+    primary_node.execute('cd /opt/')
+    wget_commands, rpm_names = _gather_wget_commands_and_rpm_names(sdc_version, mapr_version, mep_version)
+    primary_node.execute('; '.join(wget_commands))  # Fetch all rpm packages
+    primary_node.execute('yum -y -q localinstall {}'.format(' '.join(rpm_names)))
+    mapr_mep_version = '' if mep_version is None else 'MAPR_MEP_VERSION={}'.format(mep_version[:1])
+    is_mapr_6 = mapr_version.startswith('6')
+    setup_mapr_cmd = (' SDC_HOME=/opt/streamsets-datacollector SDC_CONF=/etc/sdc MAPR_HOME=/opt/mapr'
+                      ' MAPR_VERSION={mapr_version} {mapr_mep_version}'
+                      ' /opt/streamsets-datacollector/bin/streamsets setup-mapr >& /tmp/setup-mapr.out')
+    primary_node.execute(setup_mapr_cmd.format(mapr_version=mapr_version[:5],
+                                               mapr_mep_version=mapr_mep_version))
+    primary_node.execute('rm -f {}'.format(' '.join(rpm_names)))
+    if is_mapr_6:
+        primary_node.execute('systemctl start sdc; systemctl enable sdc')
+    else:
+        primary_node.execute('service sdc start; chkconfig --add sdc')

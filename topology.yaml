@@ -27,6 +27,9 @@ build args:
         metavar: ver
 
 start args:
+    --dont-register-gateway:
+        action: store_true
+        help: If specified, do not register gateway with the cluster
     --license-credentials:
         help: MapR license credentials to use in the format username:password
         metavar: credentials
@@ -46,9 +49,9 @@ start args:
     --predictable:
         action: store_true
         help: If specified, attempt to expose container ports to the same port number on the host
-    --dont-register-gateway:
-        action: store_true
-        help: If specified, do not register gateway with the cluster
+    --sdc-version:
+        help: If specified, the version of StreamSets Data Collector to install
+        metavar: ver
     --secure:
         action: store_true
         help: If specified, enable native security for the cluster

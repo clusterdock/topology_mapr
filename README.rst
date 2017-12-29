@@ -31,7 +31,7 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
                              [--license-url url] [--mep-version ver]
                              [--node-disks map] [--predictable]
                              [--license-credentials credentials]
-                             [--dont-register-gateway] [--secure]
+                             [--dont-register-gateway][--sdc-version ver][--secure]
                              [--secondary-nodes node [node ...]]
                              [--primary-node node [node ...]]
                              topology
@@ -56,6 +56,9 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
       -h, --help            show this help message and exit
     
     MapR arguments:
+      --dont-register-gateway
+                            If specified, do not register gateway with the cluster
+                            (default: False)
       --license-credentials credentials
                             MapR license credentials to use in the format
                             username:password (default: None)
@@ -65,9 +68,8 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
       --node-disks map      Map of node names to block devices (default: None)
       --predictable         If specified, attempt to expose container ports to the
                             same port number on the host (default: False)
-      --dont-register-gateway
-                            If specified, do not register gateway with the cluster
-                            (default: False)
+      --sdc-version ver     If specified, the version of StreamSets Data Collector
+                            to install (default: None)
       --secure              If specified, enable native security for the cluster
                             (default: False)
     
