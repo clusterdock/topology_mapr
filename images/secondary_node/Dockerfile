@@ -31,7 +31,9 @@ RUN yum -y install java-1.8.0-openjdk-devel \
     mapr-core \
     mapr-fileserver \
     mapr-hbase-regionserver \
-    mapr-nodemanager
+    mapr-kafka \
+    mapr-nodemanager \
+    mapr-spark
 
 # MapR script /opt/mapr/initscripts/mapr-warden sends core dump to a directory created by output of
 # $(cat /proc/sys/kernel/core_pattern). On a host with Ubuntu, the command produces output like
