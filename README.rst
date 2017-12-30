@@ -31,7 +31,7 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
                              [--license-url url] [--mep-version ver]
                              [--node-disks map] [--predictable]
                              [--license-credentials credentials]
-                             [--dont-register-gateway]
+                             [--dont-register-gateway] [--secure]
                              [--secondary-nodes node [node ...]]
                              [--primary-node node [node ...]]
                              topology
@@ -67,6 +67,8 @@ To see full usage instructions for the ``start`` action, use ``-h``/``--help``:
                             same port number on the host (default: False)
       --dont-register-gateway
                             If specified, do not register gateway with the cluster
+                            (default: False)
+      --secure              If specified, enable native security for the cluster
                             (default: False)
     
     Node groups:

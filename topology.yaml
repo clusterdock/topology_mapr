@@ -49,3 +49,10 @@ start args:
     --dont-register-gateway:
         action: store_true
         help: If specified, do not register gateway with the cluster
+    --secure:
+        action: store_true
+        help: If specified, enable native security for the cluster
+    --secure-config-directory:
+        default: ~/.clusterdock/secure
+        help: Mounts this directory to all nodes for MapR security config files
+        metavar: path

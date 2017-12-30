@@ -12,6 +12,7 @@
 # limitations under the License.
 
 import logging
+import os
 import tempfile
 import yaml
 from socket import getfqdn, socket
@@ -20,7 +21,19 @@ from clusterdock.models import Cluster, Node
 from clusterdock.utils import wait_for_condition
 
 DEFAULT_NAMESPACE = 'clusterdock'
+MAPR_CONFIG_DIR = '/opt/mapr/conf'
+MAPR_SERVERTICKET_FILE = 'maprserverticket'
 MCS_SERVER_PORT = 8443
+SECURE_CONFIG_CONTAINER_DIR = '/etc/clusterdock/secure'
+SSL_KEYSTORE_FILE = 'ssl_keystore'
+SSL_TRUSTSTORE_FILE = 'ssl_truststore'
+
+SECURE_FILES = [
+    MAPR_SERVERTICKET_FILE,
+    SSL_KEYSTORE_FILE,
+    SSL_TRUSTSTORE_FILE
+]
+
 
 logger = logging.getLogger('clusterdock.{}'.format(__name__))
 
@@ -50,7 +63,11 @@ def main(args):
                         ports=[{MCS_SERVER_PORT: MCS_SERVER_PORT}
                                if args.predictable
                                else MCS_SERVER_PORT],
-                        devices=node_disks.get(args.primary_node[0]))
+                        devices=node_disks.get(args.primary_node[0]),
+                        # Secure cluster needs the ticket to execute rest of commands
+                        # after cluster start.
+                        environment=['MAPR_TICKETFILE_LOCATION=/opt/mapr/conf/mapruserticket']
+                        if args.secure else [])
 
     secondary_nodes = [Node(hostname=hostname,
                             group='secondary',
@@ -59,6 +76,13 @@ def main(args):
                        for hostname in args.secondary_nodes]
 
     cluster = Cluster(primary_node, *secondary_nodes)
+
+    if args.secure:
+        secure_config_host_dir = os.path.expanduser(args.secure_config_directory)
+        volumes = [{secure_config_host_dir: SECURE_CONFIG_CONTAINER_DIR}]
+        for node in cluster.nodes:
+            node.volumes.extend(volumes)
+
     # MapR 6.0.0 uses CentOS 7 which  needs following settings.
     if args.mapr_version.startswith('6.0.0'):
         for node in cluster.nodes:
@@ -72,13 +96,40 @@ def main(args):
     logger.info('Generating new UUIDs ...')
     cluster.execute('/opt/mapr/server/mruuidgen > /opt/mapr/hostid')
 
-    for node in cluster:
-        configure_command = ('/opt/mapr/server/configure.sh -C {0} -Z {0} -RM {0} -HS {0} '
+    if not args.secure:
+        logger.info('Configuring the cluster ...')
+        for node in cluster:
+            configure_command = ('/opt/mapr/server/configure.sh -C {0} -Z {0} -RM {0} -HS {0} '
+                                 '-u mapr -g mapr -D {1}'.format(
+                                     primary_node.fqdn,
+                                     ','.join(node_disks.get(node.hostname))
+                                 ))
+            node.execute("bash -c '{}'".format(configure_command))
+    else:
+        logger.info('Configuring native security for the cluster ...')
+        configure_command = ('/opt/mapr/server/configure.sh -secure -genkeys -C {0} -Z {0} -RM {0} -HS {0} '
                              '-u mapr -g mapr -D {1}'.format(
                                  primary_node.fqdn,
-                                 ','.join(node_disks.get(node.hostname))
+                                 ','.join(node_disks.get(primary_node.hostname))
                              ))
-        node.execute("bash -c '{}'".format(configure_command))
+        source_files = ['{}/{}'.format(MAPR_CONFIG_DIR, file) for file in SECURE_FILES]
+        commands = [configure_command,
+                    'chmod 600 {}/{}'.format(MAPR_CONFIG_DIR, SSL_KEYSTORE_FILE),
+                    'cp -f {src} {dest_dir}'.format(src=' '.join(source_files),
+                                                    dest_dir=SECURE_CONFIG_CONTAINER_DIR)]
+        primary_node.execute('; '.join(commands))
+        for node in secondary_nodes:
+            source_files = ['{}/{}'.format(SECURE_CONFIG_CONTAINER_DIR, file)
+                            for file in SECURE_FILES]
+            configure_command = ('/opt/mapr/server/configure.sh -secure -C {0} -Z {0} -RM {0} -HS {0} '
+                                 '-u mapr -g mapr -D {1}'.format(
+                                     primary_node.fqdn,
+                                     ','.join(node_disks.get(node.hostname))
+                                 ))
+            commands = ['cp -f {src} {dest_dir}'.format(src=' '.join(source_files),
+                                                        dest_dir=MAPR_CONFIG_DIR),
+                        configure_command]
+            node.execute('; '.join(commands))
 
     logger.info('Waiting for MapR Control System server to come online ...')
 
@@ -98,12 +149,12 @@ def main(args):
     mcs_server_host_port = primary_node.host_ports.get(MCS_SERVER_PORT)
 
     logger.info('Creating /apps/spark directory on %s ...', primary_node.hostname)
-    spark_directory_command = ['sudo -u mapr hadoop fs -mkdir -p /apps/spark',
-                               'sudo -u mapr hadoop fs -chmod 777 /apps/spark']
+    spark_directory_command = ['hadoop fs -mkdir -p /apps/spark',
+                               'hadoop fs -chmod 777 /apps/spark']
     primary_node.execute("bash -c '{}'".format('; '.join(spark_directory_command)))
 
     logger.info('Creating MapR sample Stream named /sample-stream on %s ...', primary_node.hostname)
-    primary_node.execute('sudo -u mapr maprcli stream create -path /sample-stream '
+    primary_node.execute('maprcli stream create -path /sample-stream '
                          '-produceperm p -consumeperm p -topicperm p')
 
     if args.mapr_version.startswith('6.0.0') and args.license_url:
