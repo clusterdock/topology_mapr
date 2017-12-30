@@ -21,10 +21,10 @@ from clusterdock.models import Cluster, Node
 from clusterdock.utils import wait_for_condition
 
 DEFAULT_NAMESPACE = 'clusterdock'
+DEFAULT_SDC_REPO = 'https://s3-us-west-2.amazonaws.com/archives.streamsets.com/datacollector/'
 EARLIEST_MAPR_VERSION_WITH_LICENSE_AND_CENTOS_7 = (6, 0, 0)
 MAPR_CONFIG_DIR = '/opt/mapr/conf'
 MAPR_SERVERTICKET_FILE = 'maprserverticket'
-DEFAULT_SDC_REPO = 'https://s3-us-west-2.amazonaws.com/archives.streamsets.com/datacollector/'
 MCS_SERVER_PORT = 8443
 SECURE_CONFIG_CONTAINER_DIR = '/etc/clusterdock/secure'
 SSL_KEYSTORE_FILE = 'ssl_keystore'
