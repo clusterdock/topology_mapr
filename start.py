@@ -21,6 +21,7 @@ from clusterdock.models import Cluster, Node
 from clusterdock.utils import wait_for_condition
 
 DEFAULT_NAMESPACE = 'clusterdock'
+EARLIEST_MAPR_VERSION_WITH_LICENSE_AND_CENTOS_7 = (6, 0, 0)
 MAPR_CONFIG_DIR = '/opt/mapr/conf'
 MAPR_SERVERTICKET_FILE = 'maprserverticket'
 MCS_SERVER_PORT = 8443
@@ -83,8 +84,9 @@ def main(args):
         for node in cluster.nodes:
             node.volumes.extend(volumes)
 
-    # MapR 6.0.0 uses CentOS 7 which  needs following settings.
-    if args.mapr_version.startswith('6.0.0'):
+    # MapR versions 6.0.0 onwards use CentOS 7 which needs following settings.
+    mapr_version_tuple = tuple(int(i) for i in args.mapr_version.split('.'))
+    if mapr_version_tuple >= EARLIEST_MAPR_VERSION_WITH_LICENSE_AND_CENTOS_7:
         for node in cluster.nodes:
             node.volumes.append({'/sys/fs/cgroup': '/sys/fs/cgroup'})
             temp_dir_name = tempfile.mkdtemp()
@@ -117,7 +119,7 @@ def main(args):
                     'chmod 600 {}/{}'.format(MAPR_CONFIG_DIR, SSL_KEYSTORE_FILE),
                     'cp -f {src} {dest_dir}'.format(src=' '.join(source_files),
                                                     dest_dir=SECURE_CONFIG_CONTAINER_DIR)]
-        primary_node.execute('; '.join(commands))
+        primary_node.execute(' && '.join(commands))
         for node in secondary_nodes:
             source_files = ['{}/{}'.format(SECURE_CONFIG_CONTAINER_DIR, file)
                             for file in SECURE_FILES]
@@ -129,7 +131,7 @@ def main(args):
             commands = ['cp -f {src} {dest_dir}'.format(src=' '.join(source_files),
                                                         dest_dir=MAPR_CONFIG_DIR),
                         configure_command]
-            node.execute('; '.join(commands))
+            node.execute(' && '.join(commands))
 
     logger.info('Waiting for MapR Control System server to come online ...')
 
@@ -145,7 +147,6 @@ def main(args):
     wait_for_condition(condition=condition,
                        condition_args=[primary_node.ip_address, MCS_SERVER_PORT],
                        time_between_checks=3, timeout=180, success=success, failure=failure)
-
     mcs_server_host_port = primary_node.host_ports.get(MCS_SERVER_PORT)
 
     logger.info('Creating /apps/spark directory on %s ...', primary_node.hostname)
@@ -157,13 +158,13 @@ def main(args):
     primary_node.execute('maprcli stream create -path /sample-stream '
                          '-produceperm p -consumeperm p -topicperm p')
 
-    if args.mapr_version.startswith('6.0.0') and args.license_url:
+    if mapr_version_tuple >= EARLIEST_MAPR_VERSION_WITH_LICENSE_AND_CENTOS_7 and args.license_url:
         license_commands = ['curl --user {} {} > /tmp/lic'.format(args.license_credentials,
                                                                   args.license_url),
                             '/opt/mapr/bin/maprcli license add -license /tmp/lic -is_file true',
                             'rm -rf /tmp/lic']
         logger.info('Applying license ...')
-        primary_node.execute('; '.join(license_commands))
+        primary_node.execute(' && '.join(license_commands))
 
     if not args.dont_register_gateway:
         logger.info('Registering gateway with the cluster ...')
@@ -172,7 +173,7 @@ def main(args):
                                      'maprcli cluster gateway set -dstcluster $(cat '
                                      '/tmp/cluster-name) -gateways {}'.format(primary_node.fqdn),
                                      'rm /tmp/cluster-name']
-        primary_node.execute('; '.join(register_gateway_commands))
+        primary_node.execute(' && '.join(register_gateway_commands))
 
     logger.info('MapR Control System server is now accessible at https://%s:%s',
                 getfqdn(), mcs_server_host_port)
