@@ -23,6 +23,8 @@ from clusterdock.utils import wait_for_condition
 DEFAULT_NAMESPACE = 'clusterdock'
 DEFAULT_SDC_REPO = 'https://s3-us-west-2.amazonaws.com/archives.streamsets.com/datacollector/'
 EARLIEST_MAPR_VERSION_WITH_LICENSE_AND_CENTOS_7 = (6, 0, 0)
+# For MEP 4.0 onwards, MAPR_MEP_VERSION env. variable is needed by setup_mapr script.
+EARLIEST_MEP_VERSION_FOR_SETUP_MAPR_SCRIPT = (4, 0)
 MAPR_CONFIG_DIR = '/opt/mapr/conf'
 MAPR_SERVERTICKET_FILE = 'maprserverticket'
 MCS_SERVER_PORT = 8443
@@ -247,8 +249,14 @@ def _install_streamsets_datacollector(primary_node, sdc_version, mapr_version, m
     wget_commands, rpm_names = _gather_wget_commands_and_rpm_names(sdc_version, mapr_version, mep_version)
     primary_node.execute('; '.join(wget_commands))  # Fetch all rpm packages
     primary_node.execute('yum -y -q localinstall {}'.format(' '.join(rpm_names)))
-    mapr_mep_version = '' if mep_version is None else 'MAPR_MEP_VERSION={}'.format(mep_version[:1])
     is_mapr_6 = mapr_version.startswith('6')
+    # For MEP 4.0 onwards, MAPR_MEP_VERSION env. variable is needed by setup_mapr script.
+    # And for earlier MEP versions than 4.0, the script takes no effect if that env. variable is set up.
+    mapr_mep_version = ''
+    if mep_version:
+        mep_version_tuple = tuple(int(i) for i in mep_version.split('.'))
+        if mep_version_tuple >= EARLIEST_MEP_VERSION_FOR_SETUP_MAPR_SCRIPT:
+            mapr_mep_version = 'MAPR_MEP_VERSION={}'.format(mep_version[:1])
     setup_mapr_cmd = (' SDC_HOME=/opt/streamsets-datacollector SDC_CONF=/etc/sdc MAPR_HOME=/opt/mapr'
                       ' MAPR_VERSION={mapr_version} {mapr_mep_version}'
                       ' /opt/streamsets-datacollector/bin/streamsets setup-mapr >& /tmp/setup-mapr.out')
